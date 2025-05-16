@@ -2,6 +2,7 @@ use std::fs::File;
 use std::time::Duration;
 use reqwest::Proxy;
 use serde::{Serialize, Deserialize};
+use tokio::runtime;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct Config {
@@ -14,6 +15,17 @@ fn main() {
     let file = File::open("config.yaml").expect("Could not open file");
     let config: Config = serde_yaml::from_reader(file).expect("Could not read values");
     println!("{:?}", config);
+    runtime::Builder::new_multi_thread()
+        .worker_threads(1)
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async move {
+            let res = get_socks_list(&config).await;
+            if res.is_ok() {
+                print!("{}",res.unwrap());
+            }
+        })
 }
 
 async fn get_socks_list(config: &Config) -> Result<String,Box<dyn std::error::Error>> {
