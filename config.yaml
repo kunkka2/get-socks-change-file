@@ -1,3 +1,6 @@
-socks_list_url: http://127.0.0.1:8000
-get_list_proxy: http://127.0.0.1:1080
+proxy_sources:
+  - socks_list_url: http://127.0.0.1:8000
+    get_list_proxy: http://127.0.0.1:1080
+  - socks_list_url: http://127.0.0.1:8000
+    get_list_proxy: http://127.0.0.1:1080
 cert_path: './'
