@@ -26,16 +26,18 @@ fn main() {
         .build()
         .unwrap()
         .block_on(async move {
-            let res = get_socks_list(&config).await;
-            if res.is_ok() {
-                print!("{}",res.unwrap());
+            for oneproxy in &config.proxy_sources {
+
+                let res = get_socks_list(oneproxy).await;
+                if res.is_ok() {
+                    print!("{}",res.unwrap());
+                }
             }
         })
 }
 
-async fn get_socks_list(config: &Config) -> Result<String,Box<dyn std::error::Error>> {
+async fn get_socks_list(oneproxy: &ProxySource) -> Result<String,Box<dyn std::error::Error>> {
     let mut builder = reqwest::Client::builder();
-    let oneproxy = config.proxy_sources.first().unwrap();
 
     if  !oneproxy.get_list_proxy.is_none() {
         let get_list_proxy = oneproxy.get_list_proxy.as_ref().unwrap();
