@@ -39,13 +39,22 @@ fn main() {
                 // }
             }
             let all_res = join_all(handles).await;
+
+            let mut data = "".to_string();
             for res in all_res {
                 if res.is_ok(){
                     let txt = res.unwrap();
                     println!("{}",txt);
+                    if txt.len() > 5 {
+                        data = data.trim().to_string();
+                        data += "\n";
+                        data += &txt;
+                    }
+
                 }
             }
             println!("still use conifg {}",config.proxy_sources.len());
+            println!("socks list is: {}", data);
         })
 }
 
@@ -61,4 +70,47 @@ async fn get_socks_list(oneproxy: ProxySource) -> String {
     let data = client.get(&oneproxy.socks_list_url).send().await.expect("Could not get socks list");
     let text = data.text().await.expect("Could not read content");
     text
+}
+
+
+#[cfg(test)]
+mod tests {
+    use std::convert::Infallible;
+    use std::net::{SocketAddr};
+    use hyper::server::conn::http1;
+    use hyper::{Request, Response};
+    use hyper::body::Bytes;
+    use tokio::task;
+    use tokio::net::TcpListener;
+    use hyper_util::rt::tokio::TokioIo;
+    use hyper::service::service_fn;
+    use hyper_util::rt::TokioTimer;
+
+    const USE_PROXY:&str = "47.238.205.61:8888";
+    async fn hello(_: Request<hyper::body::Incoming>) -> Result<Response<Bytes>, Infallible> {
+        Ok(Response::new(Bytes::from( format!("{}\n{}",USE_PROXY,USE_PROXY))))
+    }
+
+    #[tokio::test]
+    async  fn test_main_run(){
+        let addr = SocketAddr::from(([127, 0, 0, 1], 1081));
+        let listener = TcpListener::bind(addr).await.expect("Could not bind to address");
+        let server_task = task::spawn(async move {
+
+            let (stream, _)= listener.accept().await.expect("Could not accept connection");
+            let io = TokioIo::new(stream);
+            // Spawn a tokio task to serve multiple connections concurrently
+            tokio::task::spawn(async move {
+                // Finally, we bind the incoming connection to our `hello` service
+                if let Err(err) = http1::Builder::new()
+                    .timer(TokioTimer::new())
+                    // `service_fn` converts our function in a `Service`
+                    .serve_connection(io, service_fn(hello))
+                    .await
+                {
+                    eprintln!("Error serving connection: {:?}", err);
+                }
+            });
+        });
+    }
 }
