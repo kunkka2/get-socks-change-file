@@ -5,6 +5,7 @@ use serde::{Serialize, Deserialize};
 use tokio::{runtime, task};
 use futures::future::join_all;
 
+
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 struct ProxySource {
     socks_list_url: String,
@@ -16,45 +17,49 @@ struct Config {
     proxy_sources: Vec<ProxySource>,
     cert_path: String,
 }
-fn main() {
-    println!("Hello, world!");
+
+async fn main_task(){
     let file = File::open("config.yaml").expect("Could not open file");
     let config: Config = serde_yaml::from_reader(file).expect("Could not read values");
     println!("{:?}", config);
+    let mut handles =Vec::new();
+    for oneproxy in &config.proxy_sources {
+        let handle = task::spawn(get_socks_list(oneproxy.clone()));
+        handles.push(handle);
+        //let handle = task.spawn(get_socks_list((oneproxy)));
+
+        // let res = get_socks_list(oneproxy).await;
+        // if res.is_ok() {
+        //     print!("{}",res.unwrap());
+        // }
+    }
+    let all_res = join_all(handles).await;
+
+    let mut data = "".to_string();
+    for res in all_res {
+        if res.is_ok(){
+            let txt = res.unwrap();
+            println!("{}",txt);
+            if txt.len() > 5 {
+                data = data.trim().to_string();
+                data += "\n";
+                data += &txt;
+            }
+
+        }
+    }
+    println!("still use conifg {}",config.proxy_sources.len());
+    println!("socks list is: {}", data);
+}
+fn main() {
+
     runtime::Builder::new_multi_thread()
         .worker_threads(1)
         .enable_all()
         .build()
         .unwrap()
         .block_on(async move {
-            let mut handles =Vec::new();
-            for oneproxy in &config.proxy_sources {
-                let handle = task::spawn(get_socks_list(oneproxy.clone()));
-                handles.push(handle);
-                //let handle = task.spawn(get_socks_list((oneproxy)));
-
-                // let res = get_socks_list(oneproxy).await;
-                // if res.is_ok() {
-                //     print!("{}",res.unwrap());
-                // }
-            }
-            let all_res = join_all(handles).await;
-
-            let mut data = "".to_string();
-            for res in all_res {
-                if res.is_ok(){
-                    let txt = res.unwrap();
-                    println!("{}",txt);
-                    if txt.len() > 5 {
-                        data = data.trim().to_string();
-                        data += "\n";
-                        data += &txt;
-                    }
-
-                }
-            }
-            println!("still use conifg {}",config.proxy_sources.len());
-            println!("socks list is: {}", data);
+            main_task().await;
         })
 }
 
@@ -85,10 +90,14 @@ mod tests {
     use hyper_util::rt::tokio::TokioIo;
     use hyper::service::service_fn;
     use hyper_util::rt::TokioTimer;
+    use futures::future::try_select;
+    use super::*;
+
 
     const USE_PROXY:&str = "47.238.205.61:8888";
-    async fn hello(_: Request<hyper::body::Incoming>) -> Result<Response<Bytes>, Infallible> {
-        Ok(Response::new(Bytes::from( format!("{}\n{}",USE_PROXY,USE_PROXY))))
+    async fn hello(_: Request<hyper::body::Incoming>) -> Result<Response<String>, Infallible> {
+        println!("request hello method");
+        Ok(Response::new(format!("{}\n{}",USE_PROXY,USE_PROXY)))
     }
 
     #[tokio::test]
@@ -96,21 +105,31 @@ mod tests {
         let addr = SocketAddr::from(([127, 0, 0, 1], 1081));
         let listener = TcpListener::bind(addr).await.expect("Could not bind to address");
         let server_task = task::spawn(async move {
+            loop {
+                let (stream, _)= listener.accept().await.expect("Could not accept connection");
+                println!("listen port info 000");
+                let io = TokioIo::new(stream);
+                // Spawn a tokio task to serve multiple connections concurrently
+                tokio::task::spawn(async move {
+                    // Finally, we bind the incoming connection to our `hello` service
+                    println!("task handle request 001");
+                    if let Err(err) = http1::Builder::new()
+                        .timer(TokioTimer::new())
+                        // `service_fn` converts our function in a `Service`
+                        .serve_connection(io, service_fn(hello))
+                        .await
+                    {
+                        eprintln!("Error serving connection: {:?}", err);
+                    }
+                });
+            }
 
-            let (stream, _)= listener.accept().await.expect("Could not accept connection");
-            let io = TokioIo::new(stream);
-            // Spawn a tokio task to serve multiple connections concurrently
-            tokio::task::spawn(async move {
-                // Finally, we bind the incoming connection to our `hello` service
-                if let Err(err) = http1::Builder::new()
-                    .timer(TokioTimer::new())
-                    // `service_fn` converts our function in a `Service`
-                    .serve_connection(io, service_fn(hello))
-                    .await
-                {
-                    eprintln!("Error serving connection: {:?}", err);
-                }
-            });
         });
+        let _ = try_select(server_task,tokio::task::spawn(async {
+            println!("start time11!");
+            main_task().await;
+            tokio::time::sleep(tokio::time::Duration::from_secs(65)).await;
+            println!("end time11!");
+        })).await;
     }
 }
