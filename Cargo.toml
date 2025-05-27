@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 futures = "0.3.31"
-reqwest = { version = "0.12.15", features = ['rustls-tls'] }
+reqwest = { version = "0.12.15", features = ["rustls-tls", "socks"] }
 serde = {  version = "1.0.219", features = ["serde_derive", "derive"] }
 serde_yaml = "0.9.34"
 tokio = { version = "1.45.0", features = ["rt-multi-thread"] }
