@@ -1,4 +1,4 @@
-#[allow(unused_imports)]
+
 use std::fs::File;
 use std::time::Duration;
 use reqwest::Proxy;
@@ -85,7 +85,8 @@ mod tests {
     use std::net::{SocketAddr};
     use hyper::server::conn::http1;
     use hyper::{Request, Response};
-    use hyper::body::Bytes;
+    // #[allow(unused_imports)]
+    // use hyper::body::Bytes;
     use tokio::task;
     use tokio::net::TcpListener;
     use hyper_util::rt::tokio::TokioIo;
