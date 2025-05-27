@@ -1,6 +1,6 @@
 proxy_sources:
   - socks_list_url: http://127.0.0.1:1081
-    get_list_proxy: http://127.0.0.1:1080
+    get_list_proxy: http://127.0.0.1:1082
   - socks_list_url: http://127.0.0.1:1081
-    get_list_proxy: http://127.0.0.1:1080
+    get_list_proxy: http://127.0.0.1:1082
 cert_path: './'

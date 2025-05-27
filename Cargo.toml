@@ -13,4 +13,5 @@ tokio = { version = "1.45.0", features = ["rt-multi-thread"] }
 [dev-dependencies]
 hyper = { version = "1.6.0", features = ["server"] }
 hyper-util = "0.1.12"
+socks5-server = "0.10.1"
 tokio = { version = "1.45.0", features = ["macros"] }
