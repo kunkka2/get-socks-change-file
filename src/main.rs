@@ -128,7 +128,8 @@ mod tests {
 
         });
         let _ = try_select(server_task,tokio::task::spawn(async {
-            println!("start time11!");
+            println!("start time11! wait 2s; wait server");
+            tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
             main_task().await;
             //tokio::time::sleep(tokio::time::Duration::from_secs(65)).await;
             println!("end time11!");
