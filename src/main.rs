@@ -51,6 +51,15 @@ async fn main_task(){
     }
     println!("still use conifg {}",config.proxy_sources.len());
     println!("socks list is: {}", data);
+
+    let lines = data.lines();
+    let mut filtered_lines= Vec::new();
+    for line in lines {
+        if !filtered_lines.contains(&line.to_string()) {
+            filtered_lines.push(line.to_string());
+        }
+    }
+    println!("{:?}", filtered_lines);
 }
 fn main() {
 
