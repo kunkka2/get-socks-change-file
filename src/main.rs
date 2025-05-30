@@ -1,11 +1,16 @@
 
 use std::fs::File;
 use std::time::Duration;
+use std::sync::Arc;
 use reqwest::Proxy;
 use serde::{Serialize, Deserialize};
-use tokio::{runtime, task};
+use tokio::{
+    runtime,
+    task,
+    sync::{Mutex}
+};
 use futures::future::join_all;
-
+use tokio::io::join;
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 struct ProxySource {
@@ -18,6 +23,13 @@ struct Config {
     proxy_sources: Vec<ProxySource>,
     cert_path: String,
 }
+
+
+struct Ipres {
+    usetime:Duration,
+    ipstr:String,
+}
+
 
 async fn main_task(){
     let file = File::open("config.yaml").expect("Could not open file");
@@ -60,7 +72,51 @@ async fn main_task(){
         }
     }
     println!("{:?}", filtered_lines);
+    let length = filtered_lines.len();
+    let count = length.div_ceil(4);
+    let mut handles = Vec::new();
+    let works:Arc<Mutex<Vec<Ipres>>>= Arc::new(Mutex::new(Vec::new()));
+    let uselines = Arc::new(Mutex::new(filtered_lines));
+    let mut startloop = 0;
+    loop {
+
+        let works_one = works.clone();
+        let worklines = uselines.clone();
+        let handle = tokio::spawn(async move {
+            let mut end = startloop + count;
+            if end > length {
+                end = length;
+            }
+            for i in startloop..end {
+                let start = tokio::time::Instant::now();
+                tokio::time::sleep(Duration::from_secs(5)).await;
+                let linestask = worklines.lock().await;
+                let  ipres = Ipres {
+                    usetime:start.elapsed(),
+                    ipstr: linestask[i].clone(),
+                };
+                let mut worksc=works_one.lock().await;
+                worksc.push(ipres);
+            }
+        });
+        handles.push(handle);
+        if startloop + count >= length {
+            println!("done loop lineworks");
+            break;
+        } else {
+            println!("still loop lineworks{}:{}:{}",startloop,count,length);
+            startloop += count;
+        }
+    }
+    join_all(handles).await;
+    let worksc= works.lock().await;
+    let apc =worksc.iter().min_by_key(|ipres| ipres.usetime);
+    if apc.is_some() {
+        println!("{:?}",apc.unwrap().ipstr);
+    }
+
 }
+
 fn main() {
 
     runtime::Builder::new_multi_thread()
