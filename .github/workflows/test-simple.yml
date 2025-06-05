@@ -9,3 +9,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - run: cargo test --all-features -- --nocapture
+      - run: cargo doc
+      - name: Upload file
+        uses: actions/upload-artifact@v4
+        with:
+          name: get-socks.site
+          path: target/doc
+          retention-days: 5
