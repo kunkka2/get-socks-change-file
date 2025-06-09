@@ -61,8 +61,6 @@ async fn main_task(){
 
         }
     }
-    println!("still use conifg {}",config.proxy_sources.len());
-    println!("socks list is: {}", data);
 
     let lines = data.lines();
     let mut filtered_lines= Vec::new();
@@ -71,7 +69,7 @@ async fn main_task(){
             filtered_lines.push(line.to_string());
         }
     }
-    println!("{:?}", filtered_lines);
+    println!("filtered_lines is :\n{:?}", filtered_lines);
     let length = filtered_lines.len();
     let count = length.div_ceil(4);
     let mut handles = Vec::new();
@@ -95,6 +93,7 @@ async fn main_task(){
                     usetime:start.elapsed(),
                     ipstr: linestask[i].clone(),
                 };
+                println!("..........{}",ipres.ipstr);
                 let mut worksc=works_one.lock().await;
                 worksc.push(ipres);
             }
@@ -120,7 +119,7 @@ async fn main_task(){
 fn main() {
 
     runtime::Builder::new_multi_thread()
-        .worker_threads(1)
+        .worker_threads(4)
         .enable_all()
         .build()
         .unwrap()
@@ -177,7 +176,7 @@ mod tests {
     use super::*;
 
 
-    const USE_PROXY:&str = "47.238.205.61:8888";
+    const USE_PROXY:&str = "47.238.205.61:8888\n47.238.205.62:8888\n47.238.205.63:8888\n47.238.205.64:8888\n47.238.205.65:8888\n47.238.205.66:8888\n47.238.205.67:8888\n47.238.205.68:8888\n47.238.205.69:8888\n47.238.205.70:8888\n47.238.205.71:8888\n47.238.205.72:8888\n47.238.205.73:8888\n47.238.205.74:8888\n47.238.205.75:8888\n47.238.205.76:8888\n47.238.205.77:8888\n47.238.205.78:8888\n47.238.205.79:8888\n47.238.205.80:8888\n47.238.205.81:8888\n47.238.205.82:8888\n47.238.205.83:8888\n47.238.205.84:8888";
     async fn hello(_: Request<hyper::body::Incoming>) -> Result<Response<String>, Infallible> {
         println!("request hello method");
         Ok(Response::new(format!("{}\n{}",USE_PROXY,USE_PROXY)))
