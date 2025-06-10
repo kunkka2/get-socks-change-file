@@ -114,6 +114,9 @@ async fn main_task(){
                     let res = req_check_speed(&ipres.ipstr,&config_clone).await;
                     if res.is_ok(){
                         ipres.usetime = start.elapsed();
+                        println!("..........{}",ipres.ipstr);
+                        let mut worksc=works_one.lock().await;
+                        worksc.push(ipres);
                     } else {
                         ipres.usetime = Duration::from_secs(2309430920);
                     }
@@ -125,9 +128,7 @@ async fn main_task(){
                 }
 
 
-                println!("..........{}",ipres.ipstr);
-                let mut worksc=works_one.lock().await;
-                worksc.push(ipres);
+
             }
         });
         handles.push(handle);
