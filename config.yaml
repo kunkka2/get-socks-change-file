@@ -3,4 +3,6 @@ proxy_sources:
     get_list_proxy: socks5://127.0.0.1:1082
   - socks_list_url: http://127.0.0.1:1081
     get_list_proxy: socks5://127.0.0.1:1082
-cert_path: './'
+check_url: 'https://kunkka.proxy/test'
+check_host: 'kunkka.proxy'
+host_dns: ''
