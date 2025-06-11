@@ -178,12 +178,9 @@ async fn main_task(){
             startloop += count;
         }
     }
-    println!("0000002221");
     join_all(handles).await;
-    println!("000000222");
     let worksc= works.lock().await;
     let apc =worksc.iter().min_by_key(|ipres| ipres.usetime);
-    println!("000000223,{}",worksc.len());
     if apc.is_some() {
         let apcres = apc.unwrap();
         println!("use {:?} to pass request",apcres.ipstr);
