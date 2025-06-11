@@ -2,6 +2,8 @@
 use std::fs::File;
 use std::time::Duration;
 use std::sync::Arc;
+use std::io::{self, BufRead, BufReader, BufWriter, Write};
+use std::path::Path;
 use reqwest::Proxy;
 use serde::{Serialize, Deserialize};
 use tokio::{
@@ -18,13 +20,15 @@ struct ProxySource {
     get_list_proxy: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 struct Config {
     proxy_sources: Vec<ProxySource>,
     check_url: String,
     check_host: String,
     host_dns: String,
     timeout: u64,
+    target_path: String,
+    target_start: String,
 }
 
 
@@ -32,6 +36,38 @@ struct Ipres {
     usetime:Duration,
     ipstr:String,
 }
+
+
+fn modify_line(file_path: &str, ipok:&str, target_start:&str) -> io::Result<()> {
+    let path = Path::new(file_path);
+
+    // Read the file
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+
+    let mut buffer = String::new();
+
+
+    // Iterate over each line
+    for line_result in reader.lines() {
+        let line = line_result?;
+        if line.starts_with(target_start) {
+            let newline = target_start.to_string() + ipok;
+            buffer.push_str(&newline);
+            buffer.push('\n');
+        } else {
+            buffer.push_str(&line);
+            buffer.push('\n');
+        }
+
+    }
+
+    // Write back to the file
+    let mut writer = BufWriter::new(File::create(path)?);
+    writer.write_all(buffer.as_bytes())?;
+    Ok(())
+}
+
 
 async fn req_check_speed(ipport: &str, config: &Config) -> Result<(), reqwest::Error> {
     let _ = reqwest::Client::builder()
@@ -89,7 +125,7 @@ async fn main_task(){
     let count = length.div_ceil(4);
     let mut handles = Vec::new();
     let works:Arc<Mutex<Vec<Ipres>>>= Arc::new(Mutex::new(Vec::new()));
-    let config_arc =  Arc::new(config);// No need for Mutex if config is read-only
+    let config_arc =  Arc::new(config.clone());// No need for Mutex if config is read-only
     let uselines = Arc::new(filtered_lines);// No need for Mutex if config is read-only
     let mut startloop = 0;
     loop {
@@ -110,23 +146,25 @@ async fn main_task(){
                     usetime:start.elapsed(),
                     ipstr: linestask[i].clone(),
                 };
+                let mut flag = false;
                 #[cfg(not(test))]{
                     let res = req_check_speed(&ipres.ipstr,&config_clone).await;
                     if res.is_ok(){
                         ipres.usetime = start.elapsed();
                         println!("..........{}",ipres.ipstr);
-                        let mut worksc=works_one.lock().await;
-                        worksc.push(ipres);
-                    } else {
-                        ipres.usetime = Duration::from_secs(2309430920);
+                        flag = true;
                     }
                 }
                 #[cfg(test)]
                 {
                     tokio::time::sleep(Duration::from_secs(1)).await;
                     ipres.usetime = start.elapsed();
+                    flag = true;
                 }
-
+                if flag {
+                    let mut worksc=works_one.lock().await;
+                    worksc.push(ipres);
+                }
 
 
             }
@@ -140,11 +178,23 @@ async fn main_task(){
             startloop += count;
         }
     }
+    println!("0000002221");
     join_all(handles).await;
+    println!("000000222");
     let worksc= works.lock().await;
     let apc =worksc.iter().min_by_key(|ipres| ipres.usetime);
+    println!("000000223,{}",worksc.len());
     if apc.is_some() {
-        println!("{:?}",apc.unwrap().ipstr);
+        let apcres = apc.unwrap();
+        println!("use {:?} to pass request",apcres.ipstr);
+        let target_file = config.target_path.clone();
+        let target_start = config.target_start.clone();
+        match modify_line(&target_file,&apcres.ipstr,&target_start) {
+            Ok(_) => println!("File modified successfully!"),
+            Err(e) => eprintln!("Error modifying file: {}", e),
+        }
+    } else {
+        println!(" what happened?");
     }
 
 }
@@ -268,6 +318,8 @@ mod tests {
                 check_host: "localhost".to_string(),
                 host_dns: "127.0.0.1:1081".to_string(),
                 timeout: 2,
+                target_path: "".to_string(),
+                target_start: "".to_string(),
             };
             let res = req_check_speed(&ipres.ipstr,&config).await;
             if res.is_ok() {

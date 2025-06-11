@@ -7,3 +7,5 @@ check_url: 'https://kunkka.proxy/test'
 check_host: 'kunkka.proxy'
 host_dns: ''
 timeout: 2
+target_path: ./target_path
+target_start: target_start
