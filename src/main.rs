@@ -21,14 +21,19 @@ struct ProxySource {
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+struct TargetObj {
+    target_path: String,
+    target_start: String,
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 struct Config {
     proxy_sources: Vec<ProxySource>,
     check_url: String,
     check_host: String,
     host_dns: String,
     timeout: u64,
-    target_path: String,
-    target_start: String,
+    targets: Vec<TargetObj>,
 }
 
 
@@ -184,12 +189,15 @@ async fn main_task(){
     if apc.is_some() {
         let apcres = apc.unwrap();
         println!("use {:?} to pass request",apcres.ipstr);
-        let target_file = config.target_path.clone();
-        let target_start = config.target_start.clone();
-        match modify_line(&target_file,&apcres.ipstr,&target_start) {
-            Ok(_) => println!("File modified successfully!"),
-            Err(e) => eprintln!("Error modifying file: {}", e),
+        for target in config.targets {
+            let target_file = target.target_path.clone();
+            let target_start = target.target_start.clone();
+            match modify_line(&target_file,&apcres.ipstr,&target_start) {
+                Ok(_) => println!("File modified successfully!"),
+                Err(e) => eprintln!("Error modifying file: {}", e),
+            }
         }
+
     } else {
         println!(" what happened?");
     }
@@ -315,8 +323,7 @@ mod tests {
                 check_host: "localhost".to_string(),
                 host_dns: "127.0.0.1:1081".to_string(),
                 timeout: 2,
-                target_path: "".to_string(),
-                target_start: "".to_string(),
+                targets: Vec::new(),
             };
             let res = req_check_speed(&ipres.ipstr,&config).await;
             if res.is_ok() {
