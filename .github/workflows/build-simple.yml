@@ -1,7 +1,10 @@
 name: Build Release
 on:
   workflow_dispatch:
-
+    inputs:
+      version:
+        type: string
+        required: false
 jobs:
   getbin:
     name: build ${{ matrix.target }} ${{ inputs.version }}
